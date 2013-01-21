@@ -40,6 +40,9 @@ import loci.formats.ReaderWrapper;
 import nl.javadude.assumeng.Assumption;
 import nl.javadude.assumeng.AssumptionListener;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.github.jamm.MemoryMeter;
 import org.perf4j.StopWatch;
 import org.perf4j.log4j.Log4JStopWatch;
 import org.slf4j.Logger;
@@ -64,6 +67,8 @@ public class OpenBytesPerformanceTest
 {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(OpenBytesPerformanceTest.class);
+
+  private static final Log memoryLogger = LogFactory.getLog("org.perf4j.TimingLogger");
 
   private String id;
 
@@ -108,6 +113,8 @@ public class OpenBytesPerformanceTest
   private boolean memMap;
 
   private boolean bigImage = false;
+
+  private MemoryMeter meter = new MemoryMeter();
 
   private void assertBlock(int blockSize, int posX, int posY, int width,
           int height) throws Exception {
@@ -225,6 +232,10 @@ public class OpenBytesPerformanceTest
   @AfterClass
   public void tearDown() throws Exception {
     Location.mapId(id, null);
+    long onClose = meter.measureDeep(reader);
+    memoryLogger.info(String.format("%s.%s.close.memory.%s",
+            ((ReaderWrapper) reader).unwrap().getClass().getName(), filename,
+            onClose));
     reader.close();
   }
 
@@ -241,8 +252,10 @@ public class OpenBytesPerformanceTest
 
     StopWatch stopWatch = new Log4JStopWatch();
     reader.setId(id);
-    stopWatch.stop(String.format("%s.setId.%s",
-            ((ReaderWrapper) reader).unwrap().getClass().getName(), filename));
+    long afterSetId = meter.measureDeep(reader);
+    stopWatch.stop(String.format("%s.%s.setId.memory.%s",
+            ((ReaderWrapper) reader).unwrap().getClass().getName(), filename,
+            afterSetId));
     seriesCount = reader.getSeriesCount();
   }
 
@@ -276,7 +289,11 @@ public class OpenBytesPerformanceTest
                 ((ReaderWrapper) reader).unwrap().getClass().getName(),
                 filename, series, image));
             reader.openBytes(0, x, y, actualTileWidth, actualTileHeight);
-            stopWatch.stop();
+            long afterOpenBytes = meter.measureDeep(reader);
+            stopWatch.stop(String.format(
+                    "%s.%s.alloc_tile.memory.%s",
+                    ((ReaderWrapper) reader).unwrap().getClass().getName(),
+                    filename, afterOpenBytes));
           }
         }
       }
@@ -318,7 +335,11 @@ public class OpenBytesPerformanceTest
                 filename, series, image));
             reader.openBytes(image, buf, x, y, actualTileWidth,
                              actualTileHeight);
-            stopWatch.stop();
+            long afterOpenBytes = meter.measureDeep(reader);
+            stopWatch.stop(String.format(
+                    "%s.%s.prealloc_tile.memory.%s",
+                    ((ReaderWrapper) reader).unwrap().getClass().getName(),
+                    filename, afterOpenBytes));
           }
         }
       }
