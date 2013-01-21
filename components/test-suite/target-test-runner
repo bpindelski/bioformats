@@ -45,7 +45,7 @@ except ImportError:
 
 
 # Configuration options
-JAVA_ARGS = "-Xmx2048M"
+JAVA_ARGS = "-Xmx2048M -javaagent:../../jar/jamm-0.2.5.jar"
 START_CLASS = "org.testng.TestNG"
 DOCTYPE = '<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">'
 
